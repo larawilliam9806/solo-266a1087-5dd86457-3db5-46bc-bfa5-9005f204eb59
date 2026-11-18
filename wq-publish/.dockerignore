@@ -1,0 +1,9 @@
+.venv/
+data/
+downstream/
+tests/
+examples/
+__pycache__/
+*.pyc
+.git/
+*.db

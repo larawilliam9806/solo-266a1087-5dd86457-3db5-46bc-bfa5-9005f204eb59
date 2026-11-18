@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}合并预览 · 水质批次修订发布{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>合并预览：批次 {{ batch_no }}</h2>
+  <div class="meta">
+    <div><b>预览基线版本</b><span>v{{ base_version }}</span></div>
+    <div><b>当前登记版本</b><span>v{{ current_version }}</span></div>
+    <div><b>仪器 A 文件</b><span style="font-size:14px">{{ filename_a }}</span></div>
+    <div><b>仪器 B 文件</b><span style="font-size:14px">{{ filename_b }}</span></div>
+    <div><b>合并结果行数</b><span>{{ counts.total }}</span></div>
+  </div>
+
+  <div class="meta" style="margin-top:14px">
+    <div><b>仅 A 出现</b><span>{{ counts.only_a }}</span></div>
+    <div><b>仅 B 出现</b><span>{{ counts.only_b }}</span></div>
+    <div><b>双份一致</b><span>{{ counts.same }}</span></div>
+    <div><b>浓度冲突</b><span>{{ counts.conflict }}</span></div>
+    <div><b>未裁决冲突</b><span style="color:{% if counts.unresolved %}var(--red){% else %}var(--green){% endif %}">{{ counts.unresolved }}</span></div>
+  </div>
+
+  {% if stale %}
+  <div class="banner" style="margin-top:16px">
+    <strong>该合并预览已失效，禁止发布。</strong>
+    {{ stale_reason }}。
+    <a href="{{ url_for('merge_page') }}">重新上传两个文件</a>后可继续。
+  </div>
+  {% else %}
+  <p class="muted" style="margin-top:14px">
+    确认后将<strong>整批发布</strong>，每个（样本号, 检测项目）只留一行，
+    并保存逐行来源与冲突理由。
+    {% if counts.unresolved %}
+    仍有 <strong>{{ counts.unresolved }}</strong> 个冲突项未选来源或未填理由，未选完不得发布。
+    {% endif %}
+  </p>
+  {% endif %}
+</div>
+
+{% if not stale %}
+<form method="post" id="merge-form">
+  <div class="card">
+    <h2>冲突项裁决（{{ counts.conflict }}）</h2>
+    {% if counts.conflict == 0 %}
+      <p class="muted" style="margin:0">两份文件没有同一样本同项目的浓度冲突，无需裁决。</p>
+    {% else %}
+    <p class="muted">
+      逐项选择采用的来源并填写理由。可以「保存已选项」后继续，但
+      <strong>全部冲突项选完并填写理由后才能发布</strong>。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:110px">样本号</th>
+          <th style="width:110px">检测项目</th>
+          <th style="width:110px">仪器 A</th>
+          <th style="width:110px">仪器 B</th>
+          <th style="width:190px">采用来源</th>
+          <th>理由（必填）</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for e in entries %}
+        {% if e.status == "conflict" %}
+        {% set i = loop.index0 %}
+        <tr>
+          <td>{{ e.sample_no }}</td>
+          <td>{{ e.analyte }}</td>
+          <td>{{ e.value_a|conc }}</td>
+          <td>{{ e.value_b|conc }}</td>
+          <td>
+            <label style="font-weight:400;margin:0">
+              <input type="radio" name="choice_{{ i }}" value="A"
+                     form="merge-form" {% if e.chosen == "A" %}checked{% endif %}> 仪器 A
+            </label>
+            <label style="font-weight:400;margin:0">
+              <input type="radio" name="choice_{{ i }}" value="B"
+                     form="merge-form" {% if e.chosen == "B" %}checked{% endif %}> 仪器 B
+            </label>
+          </td>
+          <td>
+            <input type="text" name="reason_{{ i }}" form="merge-form"
+                   maxlength="500" value="{{ e.reason or '' }}"
+                   placeholder="例如：以仪器 A 的复测结果为准">
+          </td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>非冲突项来源（自动采用）</h2>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>样本号</th><th>检测项目</th><th>采用浓度</th><th>来源</th></tr></thead>
+      <tbody>
+      {% for e in entries %}
+        {% if e.status == "only_a" %}
+          <tr><td>{{ e.sample_no }}</td><td>{{ e.analyte }}</td>
+              <td>{{ e.value_a|conc }}</td><td><span class="tag ins">仪器 A</span></td></tr>
+        {% elif e.status == "only_b" %}
+          <tr><td>{{ e.sample_no }}</td><td>{{ e.analyte }}</td>
+              <td>{{ e.value_b|conc }}</td><td><span class="tag ins">仪器 B</span></td></tr>
+        {% elif e.status == "same" %}
+          <tr><td>{{ e.sample_no }}</td><td>{{ e.analyte }}</td>
+              <td>{{ e.value_a|conc }}</td><td><span class="tag same">双份一致</span></td></tr>
+        {% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="submit" formaction="{{ url_for('merge_save', token=token) }}">保存已选项</button>
+    <button type="submit" formaction="{{ url_for('merge_publish', token=token) }}"
+            {% if counts.unresolved %}disabled title="仍有冲突项未选择来源或未填写理由"{% endif %}>
+      确认无误，整批发布合并结果
+    </button>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('merge_cancel', token=token) }}" style="margin-top:12px">
+  <button type="submit" class="ghost">放弃本次合并</button>
+</form>
+{% else %}
+<form method="post" action="{{ url_for('merge_cancel', token=token) }}" class="actions">
+  <a href="{{ url_for('merge_page') }}"><button type="button" class="ghost">重新上传两个文件</button></a>
+  <button type="submit" class="ghost">放弃本次合并</button>
+</form>
+{% endif %}
+
+{% endblock %}

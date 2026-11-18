@@ -34,18 +34,36 @@ _HEADER_ALIASES = {
 _MAX_ERRORS = 50
 
 
+def validate_batch_no(batch_no: str) -> list[str]:
+    """校验批次号，返回错误列表。"""
+    batch_no = (batch_no or "").strip()
+    if not batch_no:
+        return ["批次号不能为空"]
+    if len(batch_no) > 64 or any(ch in batch_no for ch in '/\\:*?"<>|'):
+        return ["批次号长度需在 1-64 之间，且不能包含 / \\ : * ? \" < > | 字符"]
+    return []
+
+
 def validate_csv(raw_bytes: bytes, batch_no: str):
     """校验上传内容。
 
     返回 (rows, errors)：成功时 rows 为 dict 列表、errors 为空列表；
     失败时 rows 为 None、errors 为面向数据员的中文错误信息（含行号）。
     """
+    batch_errors = validate_batch_no(batch_no)
+    rows, row_errors = parse_csv(raw_bytes)
+    errors = batch_errors + row_errors
+    if errors:
+        return None, errors
+    return rows, []
+
+
+def parse_csv(raw_bytes: bytes):
+    """只做文件本身的解析与逐行校验（不含批次号）。
+
+    双文件合并需要对两个文件分别校验并注明来源，故把文件级校验拆出复用。
+    """
     errors: list[str] = []
-    batch_no = (batch_no or "").strip()
-    if not batch_no:
-        errors.append("批次号不能为空")
-    elif len(batch_no) > 64 or any(ch in batch_no for ch in '/\\:*?"<>|'):
-        errors.append("批次号长度需在 1-64 之间，且不能包含 / \\ : * ? \" < > | 字符")
 
     try:
         text = raw_bytes.decode("utf-8-sig")  # 兼容带 BOM 的仪器导出文件

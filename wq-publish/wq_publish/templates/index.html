@@ -14,10 +14,26 @@
   <p class="muted" style="margin-bottom:0">
     下游采集程序读取：<code>downstream/{{ live_filename }}</code>
     （<a href="{{ url_for('published_csv') }}">查看已发布 CSV</a>，文件原子替换，下游只会读到完整旧版或新版）
+    {% if merge_versions %}
+    · 本版本若由双文件合并发布，可在
+    <a href="{{ url_for('merge_versions') }}">合并版本核对</a> 页查看逐行来源。
+    {% endif %}
   </p>
   {% else %}
   <p class="muted" style="margin-bottom:0">尚未发布任何版本。首次发布将整批写入并登记为 v1。</p>
   {% endif %}
+</div>
+
+<div class="card">
+  <h2>两台仪器结果合并</h2>
+  <p class="muted" style="margin-top:0">
+    两台仪器各导出同一批次的部分结果时，使用双文件合并页生成一份可追溯的正式
+    CSV：仅一份出现的行直接采用，双份浓度相同合为一行，浓度不同则逐项选择来源
+    并填写理由，全部确认后整批发布；每个样本与检测项目只留一行，逐行来源与冲突
+    理由按版本保存，可在网页按版本核对。
+  </p>
+  <a href="{{ url_for('merge_page') }}"><button type="button">进入双文件合并</button></a>
+  <a href="{{ url_for('merge_versions') }}"><button type="button" class="ghost">按版本核对合并结果</button></a>
 </div>
 
 <div class="card">

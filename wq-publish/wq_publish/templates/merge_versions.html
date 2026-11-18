@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}合并版本核对 · 水质批次修订发布{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>已发布的合并版本</h2>
+  {% if versions %}
+  <p class="muted" style="margin-top:0">
+    以下是两台仪器合并发布过的版本，逐行来源与冲突理由按版本保存，重启后仍可核对。
+    {% if current_version %}当前生效版本：<strong>v{{ current_version }}</strong>{% endif %}
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:90px">版本</th><th>批次号</th><th>仪器 A 文件</th><th>仪器 B 文件</th>
+        <th style="width:80px">行数</th><th style="width:110px">冲突项</th><th>发布时间 (UTC)</th><th style="width:90px">状态</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for v in versions %}
+      <tr>
+        <td><a href="{{ url_for('merge_version_detail', version=v.version) }}">v{{ v.version }}</a></td>
+        <td>{{ v.batch_no }}</td>
+        <td>{{ v.filename_a }}</td>
+        <td>{{ v.filename_b }}</td>
+        <td>{{ v.row_count }}</td>
+        <td>{{ v.conflict_count }}</td>
+        <td>{{ v.published_at or '—' }}</td>
+        <td>{% if v.version == current_version %}<span class="tag ins">当前版本</span>{% else %}<span class="tag same">历史</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin:0">尚无合并发布的版本。<a href="{{ url_for('merge_page') }}">发起双文件合并</a></p>
+  {% endif %}
+</div>
+
+{% endblock %}

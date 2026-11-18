@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本地启动脚本：自动创建 venv 并安装依赖（仅 Flask），随后启动开发服务器
+# 本地启动脚本：自动创建 venv 并安装依赖（Flask + waitress），随后启动服务
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -14,10 +14,9 @@ subprocess.check_call([".venv/bin/python", str(p)])
 p.unlink()
 PY
   fi
-  .venv/bin/pip install -q flask
+  .venv/bin/pip install -q -r requirements.txt
 fi
 
 export WQ_DATA_DIR="${WQ_DATA_DIR:-$PWD/data}"
 export WQ_DOWNSTREAM_DIR="${WQ_DOWNSTREAM_DIR:-$PWD/downstream}"
-export FLASK_APP=wsgi:create_app
-exec .venv/bin/flask run --host 127.0.0.1 --port 5000
+exec .venv/bin/waitress-serve --call --host 127.0.0.1 --port 5000 wsgi:create_app

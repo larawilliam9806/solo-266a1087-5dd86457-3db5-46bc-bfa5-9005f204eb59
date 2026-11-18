@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}双文件合并 · 水质批次修订发布{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>两台仪器结果合并为正式 CSV</h2>
+  <form method="post" action="{{ url_for('merge_preview') }}" enctype="multipart/form-data">
+    <label for="batch_no">批次号</label>
+    <input type="text" id="batch_no" name="batch_no" required maxlength="64"
+           placeholder="例如 BATCH-20261118-01">
+    <div class="grid2">
+      <div>
+        <label for="csv_a">仪器 A 导出的 CSV</label>
+        <input type="file" id="csv_a" name="csv_a" accept=".csv,text/csv" required>
+      </div>
+      <div>
+        <label for="csv_b">仪器 B 导出的 CSV</label>
+        <input type="file" id="csv_b" name="csv_b" accept=".csv,text/csv" required>
+      </div>
+    </div>
+    <p class="muted">
+      两个文件都沿用原有列校验：必须含 样本号 / 检测项目 / 浓度（兼容中英文表头），
+      浓度须为非负数字；<strong>任一份文件内出现重复的（样本号, 检测项目）即整份拒绝</strong>，
+      两份都不会进入预览。<br>
+      合并规则：仅一份出现的行直接采用；两份浓度相同合为一行并记为双份一致；
+      两份浓度不同须逐项选择来源并填写理由，未全部确认不得发布。
+    </p>
+    <button type="submit">校验两个文件并生成合并预览</button>
+  </form>
+</div>
+
+<p class="muted">
+  发布后每个（样本号, 检测项目）只保留一行，逐行来源随版本保存，
+  可在 <a href="{{ url_for('merge_versions') }}">合并版本核对</a> 页按版本查看。
+  下游采集程序仍读取 <code>{{ live_filename }}</code>。
+</p>
+
+{% endblock %}

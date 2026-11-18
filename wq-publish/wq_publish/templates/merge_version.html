@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}合并版本 v{{ version }} · 水质批次修订发布{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2>合并版本 v{{ version }} 逐行来源核对</h2>
+  <div class="meta">
+    <div><b>批次号</b><span>{{ detail.batch_no }}</span></div>
+    <div><b>仪器 A 文件</b><span style="font-size:14px">{{ detail.filename_a }}</span></div>
+    <div><b>仪器 B 文件</b><span style="font-size:14px">{{ detail.filename_b }}</span></div>
+    <div><b>行数</b><span>{{ detail.rows|length }}</span></div>
+    <div><b>状态</b>
+      <span>{% if is_current %}<span class="tag ins">当前生效</span>{% else %}<span class="tag same">历史版本</span>{% endif %}</span>
+    </div>
+  </div>
+  {% if detail.registry %}
+  <p class="muted" style="margin-bottom:0">
+    发布时间 (UTC)：{{ detail.registry.published_at }} ·
+    SHA256：<code>{{ detail.registry.content_hash[:16] }}…</code> ·
+    <a href="{{ url_for('published_csv') }}">查看当前下游 CSV</a>
+  </p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>每个样本与检测项目仅一行（含来源与冲突理由）</h2>
+  <p class="muted" style="margin-top:0">
+    “双份一致”表示两份文件浓度相同、合为一行；“仪器 A / 仪器 B”表示该项只在一份文件中出现，
+    或冲突时由数据员选定；冲突行的理由原样保留。
+  </p>
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:110px">样本号</th><th style="width:110px">检测项目</th>
+        <th style="width:110px">采用浓度</th><th style="width:110px">来源</th>
+        <th style="width:110px">仪器 A 原值</th><th style="width:110px">仪器 B 原值</th>
+        <th>冲突理由</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in detail.rows %}
+      {% set s = detail.sources[(r.sample_no, r.analyte)] %}
+      <tr>
+        <td>{{ r.sample_no }}</td>
+        <td>{{ r.analyte }}</td>
+        <td><strong>{{ r.concentration|conc }}</strong></td>
+        <td>
+          <span class="tag {% if s.conflict %}upd{% elif s.source == 'both' %}same{% else %}ins{% endif %}">{{ s.source|source }}</span>
+        </td>
+        <td>{% if s.value_a is not none %}{{ s.value_a|conc }}{% else %}—{% endif %}</td>
+        <td>{% if s.value_b is not none %}{{ s.value_b|conc }}{% else %}—{% endif %}</td>
+        <td>{% if s.conflict %}{{ s.reason }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="actions">
+  <a href="{{ url_for('merge_versions') }}"><button type="button" class="ghost">返回合并版本列表</button></a>
+</div>
+
+{% endblock %}

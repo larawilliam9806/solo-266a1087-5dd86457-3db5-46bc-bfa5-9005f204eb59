@@ -1,0 +1,26 @@
+services:
+  wq-publish:
+    build: .
+    image: wq-publish:latest
+    container_name: wq-publish
+    ports:
+      - "5000:5000"
+    environment:
+      WQ_DATA_DIR: /data
+      WQ_DOWNSTREAM_DIR: /downstream
+    volumes:
+      # SQLite 登记、密钥与隔离区；重启后仍可核对已发布的合并版本
+      - ./data:/data
+      # 下游采集程序读取的正式文件目录
+      - ./downstream:/downstream
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
